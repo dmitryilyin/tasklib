@@ -4,30 +4,18 @@ require 'rubygems'
 require 'sinatra'
 require 'json'
 require 'English'
-
-$LOAD_PATH.unshift '/etc/puppet/tasks'
-require 'deploy/utils'
-require 'deploy/config'
-require 'deploy/task'
-require 'deploy/agent'
-require 'deploy/action'
-require 'deploy/action/puppet'
-require 'deploy/action/exec'
-require 'deploy/action/rspec'
+require 'tasklib'
+require 'tasklib/web'
 
 set :port, 10000
 set :bind, '0.0.0.0'
 
 get '/' do
-  return HTML if defined? HTML
-  directory = File.dirname __FILE__
-  file = File.join directory, 'rest.html'
-  return 'No HTML file!' unless File.exists? file
-  HTML = File.read file
+  Tasklib.web
 end
 
 get '/task' do
-  tasks = Deploy::Utils.get_all_tasks
+  tasks = Tasklib::Utils.get_all_tasks
   tasks = tasks.map { |t| { 'task' => t.name, 'comment' => t.comment } }
   JSON.dump({ 'data' => tasks, 'success' => true})
 end
@@ -47,7 +35,7 @@ end
 
 put '/task/:name' do
   task = params[:name]
-  agent = Deploy::Agent.new task.to_s
+  agent = Tasklib::Agent.new task.to_s
   report = agent.task_report_text
   if report
     return JSON.dump({ 'success' => true, 'report' => report });
@@ -58,7 +46,7 @@ end
 
 delete '/task/:name' do
   task = params[:name]
-  agent = Deploy::Agent.new task.to_s
+  agent = Tasklib::Agent.new task.to_s
   return JSON.dump({ 'success' => true, 'report' => 'Task ' + task + ' not running!' }) unless agent.is_running?
   result = agent.stop
   if result
@@ -70,7 +58,7 @@ end
 
 get '/task/:name' do
   task = params[:name]
-  agent = Deploy::Agent.new task.to_s
+  agent = Tasklib::Agent.new task.to_s
   status = agent.status
   pid = agent.pid
   pid = 'Not running' unless pid

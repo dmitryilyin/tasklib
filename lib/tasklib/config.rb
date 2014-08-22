@@ -1,6 +1,7 @@
 require 'yaml'
+require 'pathname'
 
-module Deploy
+module Tasklib
 
   # deploymnet configuration class #
   class Config
@@ -8,21 +9,26 @@ module Deploy
     # a set of default config values
     # @return [Hash]
     def self.default_config
-      {
-          :task_dir => '/etc/puppet/tasks',
-          :library_dir => '/etc/puppet/tasks/library',
+      return @default_config if @default_config
+      current_dir = Pathname.new(__FILE__).expand_path.dirname.realpath
+      task_dir = current_dir.dirname.dirname
+      library_dir = task_dir + 'library'
+      config_file = task_dir + 'etc' + 'config.yaml'
+      @default_config = {
+          :task_dir => task_dir.to_s,
+          :library_dir => library_dir.to_s,
           :module_dir => '/etc/puppet/modules',
           :puppet_options => '',
           :report_format => 'xunit',
-          :report_extension => '',
-          :report_dir => '/var/log/tasks',
-          :pid_dir => '/var/run/tasks',
+          :report_extension => 'xml',
+          :report_dir => '/tmp/task_report',
+          :pid_dir => '/tmp/task_run',
           :puppet_manifest => 'site.pp',
           :spec_pre => 'spec/pre_spec.rb',
           :spec_post => 'spec/post_spec.rb',
           :task_file => 'task.yaml',
-          :api_file => 'taskapi.rb',
           :debug => false,
+          :config_file => config_file.to_s,
       }
     end
 
@@ -32,12 +38,15 @@ module Deploy
     # @return [Hash]
     def self.config
       return @config if @config
-      script_dir = File.dirname __FILE__
-      config_file = 'config.yaml'
-      config_path = File.join script_dir, '..', config_file
-      config = YAML.load_file(config_path)
-      config = {} unless config.is_a? Hash
-      @config = self.default_config.merge config
+      config_file = self.default_config[:config_file]
+      if File.exist? config_file
+        @config = YAML.load_file(config_file)
+        if @config.is_a? Hash
+          @config = self.default_config.merge @config
+        end
+      else
+        @config = self.default_config
+      end
     end
 
     # makes possible to access config like this

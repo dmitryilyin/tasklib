@@ -1,44 +1,36 @@
 #!/usr/bin/env ruby
 
-$LOAD_PATH.unshift '/etc/puppet/tasks'
-require 'deploy/utils'
-require 'deploy/config'
-require 'deploy/task'
-require 'deploy/agent'
-require 'deploy/action'
-require 'deploy/action/puppet'
-require 'deploy/action/exec'
-require 'deploy/action/rspec'
+require 'tasklib'
 
 action = $ARGV[0]
 task = $ARGV[1]
 
 unless action or task
-  action = 'list'
+  action = 'help'
 end
 
 def list
-  tasks = Deploy::Utils.get_all_tasks
-  Deploy::Utils.print_tasks_list tasks
+  tasks = Tasklib::Utils.get_all_tasks
+  Tasklib::Utils.print_tasks_list tasks
 end
 
 def run(task)
   raise 'No task given!' unless task
-  agent = Deploy::Agent.new task.to_s
+  agent = Tasklib::Agent.new task.to_s
   agent.daemonize = false
   exit agent.run
 end
 
 def daemon(task)
   raise 'No task given!' unless task
-  agent = Deploy::Agent.new task.to_s
+  agent = Tasklib::Agent.new task.to_s
   agent.daemonize = true
   exit agent.run
 end
 
 def runrep(task)
   raise 'No task given!' unless task
-  agent = Deploy::Agent.new task.to_s
+  agent = Tasklib::Agent.new task.to_s
   agent.daemonize = false
   code = agent.run
   puts agent.task_report_text  
@@ -47,13 +39,13 @@ end
 
 def report(task)
   raise 'No task given!' unless task
-  agent = Deploy::Agent.new task.to_s
+  agent = Tasklib::Agent.new task.to_s
   puts agent.task_report_text
 end
 
 def status(task)
   raise 'No task given!' unless task
-  agent = Deploy::Agent.new task.to_s
+  agent = Tasklib::Agent.new task.to_s
   status = agent.status
   pid = agent.pid
   running = agent.is_running?
@@ -64,13 +56,18 @@ end
 
 def stop(task)
   raise 'No task given!' unless task
-  agent = Deploy::Agent.new task.to_s
+  agent = Tasklib::Agent.new task.to_s
   if agent.is_running?
     exit 0 if agent.stop
   else
     puts "Task #{task} is not running!"
   end
   exit 1
+end
+
+def help
+  puts 'list, run, runrep, daemon, report, status, stop, config'
+  exit 0
 end
 
 #####################
@@ -83,6 +80,7 @@ case action
   when 'report' then report task
   when 'status' then status task
   when 'stop'   then stop task
-  when 'config' then Deploy::Utils.show_config
+  when 'config' then Tasklib::Utils.show_config
+  when 'help' then help
   else raise "Unknown action: #{action}!"
 end

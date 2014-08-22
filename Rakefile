@@ -1,35 +1,34 @@
 require 'rubygems'
 require 'find'
 require 'yaml'
-$LOAD_PATH.unshift '/etc/puppet/tasks'
-require 'deploy/utils'
-require 'deploy/config'
-require 'deploy/task'
-require 'deploy/agent'
-require 'deploy/action'
-require 'deploy/action/puppet'
-require 'deploy/action/exec'
-require 'deploy/action/rspec'
+require 'tasklib/utils'
+require 'tasklib/config'
+require 'tasklib/task'
+require 'tasklib/agent'
+require 'tasklib/action'
+require 'tasklib/action/puppet'
+require 'tasklib/action/exec'
+require 'tasklib/action/rspec'
 
 
 # create rake task and sub-tasks
 # @param directory [String]
 def make_task(directory)
-  Deploy::Utils.debug "Start to make task for the directory #{directory}"
-  task = Deploy::Task.new directory
+  Tasklib::Utils.debug "Start to make task for the directory #{directory}"
+  task = Tasklib::Task.new directory
   name = task.name
   task.set_plugins
 
   actions = %w(pre run post)
   actions.each do |action|
     next unless task.has_action? action
-    Deploy::Utils.debug "Make rake task #{name}::#{action}"
+    Tasklib::Utils.debug "Make rake task #{name}::#{action}"
     namespace name do
       task action do
-        Deploy::Utils.debug "Run rake task: #{name} action: #{action}"
+        Tasklib::Utils.debug "Run rake task: #{name} action: #{action}"
         task.send action.to_sym
         task.report_output action
-        Deploy::Utils.debug "End rake task: #{name} action: #{action}"
+        Tasklib::Utils.debug "End rake task: #{name} action: #{action}"
       end
       task "#{action}/report" do
         task.report_output action
@@ -54,7 +53,7 @@ def make_task(directory)
     end
     task name do
       all_tasks = Rake.application.tasks.map { |t| t.name }
-      Deploy::Utils.debug "Run full rake task: #{name}"
+      Tasklib::Utils.debug "Run full rake task: #{name}"
       if all_tasks.include? "#{name}:pre"
         Rake::Task["#{name}:pre"].invoke
         raise "Pre-deployment test of task \"#{name}\" failed!" if task.fail? 'pre'
@@ -67,7 +66,7 @@ def make_task(directory)
         Rake::Task["#{name}:post"].invoke
         raise "Post-deployment test of task \"#{name}\" failed!" if task.fail? 'post'
       end
-      Deploy::Utils.debug "End full rake task: #{name}"
+      Tasklib::Utils.debug "End full rake task: #{name}"
     end
     task "#{name}/info" do
       puts task.description
@@ -107,7 +106,7 @@ end
 # settings
 Rake::TaskManager.record_task_metadata = true
 ENV['LANG'] = 'C'
-presets_file = 'presets.yaml'
+presets_file = 'etc/presets.yaml'
 
 # load presets data from file
 if File.exists? presets_file
@@ -119,10 +118,10 @@ if File.exists? presets_file
 end
 
 # gather all tasks as rake jobs
-Dir.chdir Deploy::Config[:task_dir] or raise "Cannot change directory to #{Deploy::Config[:task_dir]}"
+Dir.chdir Tasklib::Config[:task_dir] or raise "Cannot change directory to #{Tasklib::Config[:task_dir]}"
 
-Find.find(Deploy::Config[:library_dir]) do |path|
-  next unless File.file? path and File.basename(path) == Deploy::Config[:task_file]
+Find.find(Tasklib::Config[:library_dir] + '/') do |path|
+  next unless File.file? path and File.basename(path) == Tasklib::Config[:task_file]
   directory = File.dirname path
   make_task directory
 end
@@ -132,9 +131,9 @@ task 'list' do
   tasks = Rake.application.tasks
   presets = tasks.select { |t| t.comment and t.name.start_with? 'preset/' }
   main_tasks = tasks.select { |t| t.comment and not t.name.start_with? 'preset/' }
-  Deploy::Utils.print_tasks_list presets
+  Tasklib::Utils.print_tasks_list presets
   puts
-  Deploy::Utils.print_tasks_list main_tasks
+  Tasklib::Utils.print_tasks_list main_tasks
 end
 
 # show main tasks by default
@@ -142,9 +141,9 @@ task 'list/all' do
   tasks = Rake.application.tasks
   presets = tasks.select { |t| t.name.start_with? 'preset/' }
   main_tasks = tasks.select { |t| !t.name.start_with? 'preset/' }
-  Deploy::Utils.print_tasks_list presets
+  Tasklib::Utils.print_tasks_list presets
   puts
-  Deploy::Utils.print_tasks_list main_tasks
+  Tasklib::Utils.print_tasks_list main_tasks
 end
 
 task :default => [:list]

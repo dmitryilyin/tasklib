@@ -1,28 +1,29 @@
 require 'rubygems'
 
-module Deploy
+module Tasklib
 
   # Controlls the process of tasks execution, tests, daemonization, pids and logs #
   class Agent
     # @param task_name [String] A name of task this agent should run
     def initialize(task_name)
       set_process_title "agent: #{task_name} - init"
-      library_dir = Deploy::Config[:library_dir]
+      library_dir = Tasklib::Config[:library_dir]
       raise "Library directory #{library_dir} does not exist!" unless library_dir and File.directory? library_dir
-      task_dir = Deploy::Config[:task_dir]
+      task_dir = Tasklib::Config[:task_dir]
       raise "Base task directory #{task_dir} does not exist!" unless task_dir and File.directory? task_dir
-      report_dir = Deploy::Config[:report_dir]
+      check_pid_log_dirs
+      report_dir = Tasklib::Config[:report_dir]
       raise "Report directory #{report_dir} is not set!" unless report_dir
-      pid_dir = Deploy::Config[:pid_dir]
+      pid_dir = Tasklib::Config[:pid_dir]
       raise "Report directory #{pid_dir} is not set!" unless pid_dir
       task_directory = task_name.gsub '::', '/'
       task_directory = File.expand_path File.join library_dir, task_directory
       raise "Task directory #{task_directory} does not exist!" unless File.directory? task_directory
-      @task = Deploy::Task.new task_directory
+      @task = Tasklib::Task.new task_directory
       @task_name = task.name
       @daemonize = true
       task.set_plugins
-      Deploy::Utils.debug "Created #{self.class} for task #{task.name}"
+      Tasklib::Utils.debug "Created #{self.class} for task #{task.name}"
       set_process_title "agent: #{task_name} - idle"
     end
 
@@ -61,7 +62,7 @@ module Deploy
     # Set this agent's status file and title
     # @param status [String]
     def set_agent_status(status)
-      Deploy::Utils.debug "Agent task: #{task_name} status: #{status}"
+      Tasklib::Utils.debug "Agent task: #{task_name} status: #{status}"
       set_process_title "agent: #{task_name} - #{status}"
       @status = status
       File.open status_file_path, 'w' do |f|
@@ -136,7 +137,7 @@ module Deploy
     def run_background
       require 'daemons'
       if is_running?
-        Deploy::Utils.debug "Already running task #{task_name} at pid #{pid} status #{status}!"
+        Tasklib::Utils.debug "Already running task #{task_name} at pid #{pid} status #{status}!"
         return 1
       end
 
@@ -150,7 +151,7 @@ module Deploy
     # Run the task in foreground inside the current process
     def run_foreground
       if is_running?
-        Deploy::Utils.debug "Already running task #{task_name} at pid #{pid} status #{status}!"
+        Tasklib::Utils.debug "Already running task #{task_name} at pid #{pid} status #{status}!"
         return 1
       end
       call
@@ -178,11 +179,17 @@ module Deploy
       @pid_file_path =  File.join task_pid_dir, daemon_app_name + '.pid'
     end
 
+    # check or create pid and log dirs
+    def check_pid_log_dirs
+      Dir.mkdir Tasklib::Config[:pid_dir] unless File.directory? Tasklib::Config[:pid_dir]
+      Dir.mkdir Tasklib::Config[:report_dir] unless File.directory? Tasklib::Config[:report_dir]
+    end
+
     # @return [String] Path to this task's report di
     # Creates one if not present
     def task_report_dir
       return @task_report_dir if @task_report_dir
-      @task_report_dir = File.join Deploy::Config[:report_dir], task_name
+      @task_report_dir = File.join Tasklib::Config[:report_dir], task_name
       unless File.exists? @task_report_dir
         require 'fileutils'
         FileUtils.mkdir_p @task_report_dir
@@ -195,7 +202,7 @@ module Deploy
     # Creates on if not present
     def task_pid_dir
       return @task_pid_dir if @task_pid_dir
-      @task_pid_dir = File.join Deploy::Config[:pid_dir], task_name
+      @task_pid_dir = File.join Tasklib::Config[:pid_dir], task_name
       unless File.exists? @task_pid_dir
         require 'fileutils'
         FileUtils.mkdir_p @task_pid_dir
@@ -233,9 +240,9 @@ module Deploy
     # return human readable report of all task's actions
     # @return [String] Human readable report
     def task_report_text
-      pre = Deploy::Utils.xunit_to_list(task.report_read(:pre))[:text]
-      run = Deploy::Utils.xunit_to_list(task.report_read(:run))[:text]
-      post = Deploy::Utils.xunit_to_list(task.report_read(:post))[:text]
+      pre = Tasklib::Utils.xunit_to_list(task.report_read(:pre))[:text]
+      run = Tasklib::Utils.xunit_to_list(task.report_read(:run))[:text]
+      post = Tasklib::Utils.xunit_to_list(task.report_read(:post))[:text]
       "#{pre}\n#{run}\n#{post}"
     end
 

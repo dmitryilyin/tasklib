@@ -1,4 +1,4 @@
-module Deploy
+module Tasklib
 
   # different utility functions
   # should be static
@@ -83,7 +83,7 @@ module Deploy
     end
 
     # print a line of the Rake task or Deploy task
-    # @param task [Rake::Task,Deploy::Task]
+    # @param task [Rake::Task,Tasklib::Task]
     # @param name_length [Numeric]
     def self.print_task_line(task, name_length)
       line = ''
@@ -107,7 +107,7 @@ module Deploy
     # output debug string
     # @param message [String]
     def self.debug(message)
-      STDERR.puts message.to_s if Deploy::Config[:debug]
+      STDERR.puts message.to_s if Tasklib::Config[:debug]
     end
 
     # convert hash's keys to symbols
@@ -125,12 +125,12 @@ module Deploy
     def self.get_all_tasks
       require 'find'
       tasks = []
-      library_dir = Deploy::Config[:library_dir]
+      library_dir = Tasklib::Config[:library_dir]
       raise "Library directory #{library_dir} does not exist!" unless library_dir and File.directory? library_dir
-      Find.find(library_dir) do |path|
-        next unless File.file? path and File.basename(path) == Deploy::Config[:task_file]
+      Find.find(library_dir + '/') do |path|
+        next unless File.file? path and File.basename(path) == Tasklib::Config[:task_file]
         directory = File.dirname path
-        task = Deploy::Task.new directory
+        task = Tasklib::Task.new directory
         tasks << task
       end
       tasks
@@ -138,7 +138,7 @@ module Deploy
 
     # Print configuration in human readable form
     def self.show_config
-      Deploy::Config.config.each do |k,v|
+      Tasklib::Config.config.each do |k,v|
         puts "#{k}='#{v}'"
       end
     end

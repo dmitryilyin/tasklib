@@ -1,18 +1,18 @@
-module Deploy
+module Tasklib
   # Abstract action plugin
   # @abstract
   class Action
-    # @param task [Deploy::Task]
+    # @param task [Tasklib::Task]
     # @param action [Symbol]
     def initialize(task, action)
-      raise "Action Plugin should be given a task when created but got #{task.class}!" unless task.is_a? Deploy::Task
+      raise "Action Plugin should be given a task when created but got #{task.class}!" unless task.is_a? Tasklib::Task
       @task = task
       @action = action
-      Deploy::Utils.debug "Created #{self.class} with action #{@action} for task #{task.name}"
+      Tasklib::Utils.debug "Created #{self.class} with action #{@action} for task #{task.name}"
     end
 
     # return the task this action is attached to
-    # @return [Deploy::Task]
+    # @return [Tasklib::Task]
     def task
       @task
     end

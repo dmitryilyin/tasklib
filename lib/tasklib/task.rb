@@ -1,7 +1,7 @@
 require 'English'
 require 'yaml'
 
-module Deploy
+module Tasklib
 
   # this class represents a single task
   class Task
@@ -10,19 +10,19 @@ module Deploy
     def initialize(directory)
       raise "Task directory #{directory} does not exist!" unless directory and File.directory? directory
       directory = File.expand_path directory
-      library_dir = Deploy::Config[:library_dir]
+      library_dir = Tasklib::Config[:library_dir]
       raise "Library directory #{library_dir} does not exist!" unless library_dir and File.directory? library_dir
-      task_dir = Deploy::Config[:task_dir]
+      task_dir = Tasklib::Config[:task_dir]
       raise "Base task directory #{task_dir} does not exist!" unless task_dir and File.directory? task_dir
-      report_dir = Deploy::Config[:report_dir]
+      report_dir = Tasklib::Config[:report_dir]
       raise "Report directory #{report_dir} is not set!" unless report_dir
-      task_file = Deploy::Config[:task_file]
+      task_file = Tasklib::Config[:task_file]
       @task_file = File.join directory, task_file
       @directory = directory
       @pre_plugin = nil
       @run_plugin = nil
       @post_plugin = nil
-      Deploy::Utils.debug "Created #{self.class} with name #{name} and directory #{directory}"
+      Tasklib::Utils.debug "Created #{self.class} with name #{name} and directory #{directory}"
     end
 
     # @return [String] Convert this task to String
@@ -34,7 +34,7 @@ module Deploy
     def name
       return @name if @name
       task_path = directory.clone
-      task_path.slice! Deploy::Config[:library_dir]
+      task_path.slice! Tasklib::Config[:library_dir]
       task_path.slice! /[\/\.]+/
       task_path.gsub! '/', '::'
       task_path.gsub! ',', ''
@@ -52,9 +52,9 @@ module Deploy
       return @metadata if @metadata
       task_metadata = YAML.load_file @task_file
       task_metadata = {} unless task_metadata.is_a? Hash
-      Deploy::Utils.symbolize_hash task_metadata
+      Tasklib::Utils.symbolize_hash task_metadata
       default_task_metadata = default_metadata
-      Deploy::Utils.symbolize_hash default_task_metadata
+      Tasklib::Utils.symbolize_hash default_task_metadata
       task_metadata = default_task_metadata.merge task_metadata
       @metadata = task_metadata
     end
@@ -103,13 +103,13 @@ module Deploy
     # @return [String]
     # @param action [Symbol]
     def report_file_path(action)
-      task_report_dir = File.join Deploy::Config[:report_dir], name
+      task_report_dir = File.join Tasklib::Config[:report_dir], name
       unless File.exists? task_report_dir
         require 'fileutils'
         FileUtils.mkdir_p task_report_dir
       end
       raise "No directory #{task_report_dir} for report!" unless File.directory? task_report_dir
-      File.join task_report_dir, action.to_s + '.' + Deploy::Config[:report_extension]
+      File.join task_report_dir, action.to_s + '.' + Tasklib::Config[:report_extension]
     end
 
     # write report to file
@@ -133,7 +133,7 @@ module Deploy
     # was this task successful? based on report file
     # @param action [Symbol]
     def success?(action)
-      report = Deploy::Utils.xunit_to_list report_read(action)
+      report = Tasklib::Utils.xunit_to_list report_read(action)
       report[:errors] == 0
     end
 
@@ -152,7 +152,7 @@ module Deploy
     # read report and output it in human-readable form
     # @param action [Symbol]
     def report_output(action)
-      report = Deploy::Utils.xunit_to_list report_read(action)
+      report = Tasklib::Utils.xunit_to_list report_read(action)
       puts report[:text]
     end
 
@@ -164,19 +164,19 @@ module Deploy
     end
 
     # get pre action plugin for this task
-    # @return [Deploy::Action]
+    # @return [Tasklib::Action]
     def pre_plugin
       @pre_plugin
     end
 
     # get run action plugin for this task
-    # @return [Deploy::Action]
+    # @return [Tasklib::Action]
     def run_plugin
       @run_plugin
     end
 
     # get run action plugin for this task
-    # @return [Deploy::Action]
+    # @return [Tasklib::Action]
     def post_plugin
       @post_plugin
     end
@@ -189,7 +189,7 @@ module Deploy
           :classname => self.class,
           :name => "No #{action.to_s.capitalize}",
       }
-      report_write Deploy::Utils.make_xunit(report), action
+      report_write Tasklib::Utils.make_xunit(report), action
     end
 
     # write report file with success
@@ -200,7 +200,7 @@ module Deploy
           :classname => self.class,
           :name => "Action #{action.to_s.capitalize}",
       }
-      report_write Deploy::Utils.make_xunit(report), action
+      report_write Tasklib::Utils.make_xunit(report), action
     end
 
     # write report file with failure
@@ -215,7 +215,7 @@ module Deploy
               :text => "Execution of action #{action.to_s.capitalize} have failed!",
           }
       }
-      report_write Deploy::Utils.make_xunit(report), action
+      report_write Tasklib::Utils.make_xunit(report), action
     end
 
     # return report with failure
@@ -232,7 +232,7 @@ module Deploy
               :text => "Execution of action #{action.to_s.capitalize} did not produce a report file!",
           }
       }
-      Deploy::Utils.make_xunit(report)
+      Tasklib::Utils.make_xunit(report)
     end
 
     # check if this task has pre-deploy test action
@@ -327,9 +327,9 @@ module Deploy
     def plugin_matrix(name)
       return nil unless name
       plugins = {
-          :puppet => Deploy::PuppetAction,
-          :exec => Deploy::ExecAction,
-          :rspec => Deploy::RSpecAction,
+          :puppet => Tasklib::PuppetAction,
+          :exec => Tasklib::ExecAction,
+          :rspec => Tasklib::RSpecAction,
       }
       plugins[name.to_sym]
     end
